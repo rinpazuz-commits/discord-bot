@@ -1,5 +1,7 @@
 import os
 import json
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -48,6 +50,31 @@ TRIGGER_WORDS = load_triggers()
 # False = triggers even if the word is inside another word
 WHOLE_WORD_ONLY = True
 # ============================================
+
+
+# ============= SERVEUR WEB (pour Render) =============
+# Render ne garde en vie que des "Web Services" qui répondent au trafic HTTP.
+# Ce petit serveur ne fait qu'attendre les pings d'UptimeRobot pour que Render
+# ne mette jamais le bot en veille. Il n'a rien à voir avec Discord lui-même.
+class PingHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Bot en ligne.")
+
+    def log_message(self, format, *args):
+        pass  # évite de polluer les logs avec chaque ping
+
+
+def start_ping_server():
+    port = int(os.environ.get("PORT", 8080))  # Render fournit ce port automatiquement
+    server = HTTPServer(("0.0.0.0", port), PingHandler)
+    server.serve_forever()
+
+
+threading.Thread(target=start_ping_server, daemon=True).start()
+# =======================================================
 
 intents = discord.Intents.default()
 intents.message_content = True
