@@ -87,14 +87,32 @@ webhook_cache = {}
 
 
 async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
+    # On ne fait plus confiance aveuglément au cache : si le webhook a été
+    # supprimé manuellement sur Discord entre-temps, il faut le détecter ici
+    # plutôt que de planter plus tard au moment de l'envoi.
     if channel.id in webhook_cache:
-        return webhook_cache[channel.id]
+        cached = webhook_cache[channel.id]
+        try:
+            # Une requête légère qui échoue si le webhook n'existe plus
+            await cached.fetch()
+            return cached
+        except discord.NotFound:
+            del webhook_cache[channel.id]
 
     webhooks = await channel.webhooks()
     for wh in webhooks:
         if wh.user and wh.user.id == bot.user.id:
             webhook_cache[channel.id] = wh
             return wh
+
+    # Discord limite à 15 webhooks par salon : si on en a trop (ex. d'anciens
+    # redéploiements qui en ont recréé sans nettoyer), on réutilise le premier
+    # qu'on trouve plutôt que d'échouer à la création.
+    if len(webhooks) >= 15:
+        raise RuntimeError(
+            f"Limite de 15 webhooks atteinte sur #{channel.name} — "
+            "supprime les anciens webhooks inutilisés dans les paramètres du salon."
+        )
 
     wh = await channel.create_webhook(name="StyleBot")
     webhook_cache[channel.id] = wh
@@ -132,8 +150,11 @@ async def on_message(message: discord.Message):
         return
 
     try:
-        await message.delete()
-
+        # On envoie D'ABORD via webhook, et on ne supprime le message original
+        # QUE si ça a réussi. Avant, le message était supprimé en premier :
+        # en cas d'échec de l'envoi (webhook supprimé, limite atteinte, rate
+        # limit...), le contenu original disparaissait pour de bon sans être
+        # remplacé. Maintenant, un échec laisse le message intact.
         webhook = await get_webhook(message.channel)
 
         await webhook.send(
@@ -143,10 +164,14 @@ async def on_message(message: discord.Message):
             wait=True
         )
 
+        await message.delete()
+
     except discord.Forbidden:
-        print(f"Missing permissions in #{message.channel.name}")
+        print(f"[trigger] Permissions manquantes dans #{message.channel.name}")
+    except discord.HTTPException as e:
+        print(f"[trigger] Échec de l'envoi webhook dans #{message.channel.name}: {e}")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"[trigger] Erreur inattendue dans #{message.channel.name}: {e}")
 
     await bot.process_commands(message)
 
@@ -189,4 +214,10 @@ async def triggers(ctx):
     await ctx.send("**Current triggers:**\n" + "\n".join(f"• `{w}`" for w in TRIGGER_WORDS))
 
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    # Petit délai au démarrage : si le service redémarre en boucle (ex. après
+    # un crash), ça évite d'enchaîner les tentatives de connexion à Discord
+    # trop vite, ce qui peut aggraver un blocage Cloudflare temporaire (429 / 1015).
+    import time
+    time.sleep(10)
+    bot.run(TOKEN)
