@@ -132,21 +132,31 @@ def contains_trigger(content: str) -> bool:
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
     print("Style/repost bot is ready.")
+    print(f"[debug] Mots déclencheurs chargés : {TRIGGER_WORDS}")
     print("------")
 
 
 @bot.event
 async def on_message(message: discord.Message):
+    # [debug] Log temporaire : affiche chaque message reçu par le bot, pour
+    # vérifier qu'il reçoit bien le contenu et confirmer les mots déclencheurs.
+    print(f"[debug] Message reçu dans #{getattr(message.channel, 'name', '?')} "
+          f"de {message.author} : {message.content!r}")
+
     # Ignore bots and DMs
     if message.author.bot or not message.guild:
         return
 
     if not contains_trigger(message.content):
+        print(f"[debug] Aucun trigger détecté (triggers actuels: {TRIGGER_WORDS})")
         await bot.process_commands(message)
         return
 
+    print(f"[debug] Trigger détecté dans le message : {message.content!r}")
+
     # Check if bot has permission to manage messages
     if not message.channel.permissions_for(message.guild.me).manage_messages:
+        print(f"[debug] BLOQUÉ : pas la permission 'Gérer les messages' dans #{message.channel.name}")
         return
 
     try:
