@@ -4,7 +4,7 @@ from discord.ext import commands
 import random
 
 # ================== CONFIG ==================
-TOKEN = "YOUR_BOT_TOKEN_HERE"
+TOKEN = "MTU0ODY4MjI3MTMwODEyODM2OQ.GsAzMX.MUzYJR6myR1Ff4o-Z3CziGz0HCv7E9E0Jyz8nE"
 
 TRIGGER_WORDS = [
     "app",
