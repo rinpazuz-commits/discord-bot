@@ -1,20 +1,19 @@
-
 import discord
 from discord.ext import commands
 import random
 import os
+
 # ================== CONFIG ==================
 TOKEN = os.getenv("TOKEN")
+
 TRIGGER_WORDS = [
     "app",
     "style",
     "boom",
-    # ajoute d'autres mots ici
 ]
 
 WHOLE_WORD_ONLY = True
 
-# Réponses du 8ball (en anglais)
 EIGHTBALL_RESPONSES = [
     "Yes",
     "No",
@@ -25,8 +24,6 @@ EIGHTBALL_RESPONSES = [
     "Hell no",
     "The universe says yes",
     "Don't count on it",
-    "Signs point to yes",
-    "Outlook not so good",
 ]
 # ============================================
 
@@ -35,22 +32,26 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-
 webhook_cache = {}
 
 async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
     if channel.id in webhook_cache:
         return webhook_cache[channel.id]
 
-    webhooks = await channel.webhooks()
-    for wh in webhooks:
-        if wh.user and wh.user.id == bot.user.id:
-            webhook_cache[channel.id] = wh
-            return wh
+    try:
+        webhooks = await channel.webhooks()
+        for wh in webhooks:
+            if wh.user and wh.user.id == bot.user.id:
+                webhook_cache[channel.id] = wh
+                return wh
 
-    wh = await channel.create_webhook(name="StyleBot")
-    webhook_cache[channel.id] = wh
-    return wh
+        # Créer un nouveau webhook
+        wh = await channel.create_webhook(name="StyleBot")
+        webhook_cache[channel.id] = wh
+        return wh
+    except Exception as e:
+        print(f"ERREUR création webhook : {e}")
+        raise
 
 def contains_trigger(content: str) -> bool:
     content_lower = content.lower()
@@ -62,8 +63,8 @@ def contains_trigger(content: str) -> bool:
 
 @bot.event
 async def on_ready():
-    print(f"Connecté en tant que {bot.user} (ID: {bot.user.id})")
-    print("Bot prêt (Style + 8ball + Reply support)")
+    print(f"Connecté en tant que {bot.user}")
+    print("Bot prêt")
     print("------")
 
 @bot.event
@@ -78,17 +79,17 @@ async def on_message(message: discord.Message):
     if content_lower.startswith("8ball"):
         response = random.choice(EIGHTBALL_RESPONSES)
         await message.reply(response)
-        return  # on arrête ici, pas de style/webhook
+        return
 
     # ========== STYLE / WEBHOOK ==========
     if not contains_trigger(content):
         await bot.process_commands(message)
         return
 
-    if not message.channel.permissions_for(message.guild.me).manage_messages:
-        return
+    print(f"Mot déclencheur détecté dans le message de {message.author}")
 
     try:
+        # Référence de réponse
         reference = None
         if message.reference and message.reference.message_id:
             reference = discord.MessageReference(
@@ -97,9 +98,13 @@ async def on_message(message: discord.Message):
                 guild_id=message.guild.id
             )
 
+        # Suppression
         await message.delete()
+        print("Message supprimé")
 
+        # Webhook
         webhook = await get_webhook(message.channel)
+        print("Webhook récupéré")
 
         await webhook.send(
             content=message.content,
@@ -108,19 +113,19 @@ async def on_message(message: discord.Message):
             reference=reference,
             wait=True
         )
+        print("Message reposté avec succès")
 
-    except discord.Forbidden:
-        print(f"Permissions manquantes dans #{message.channel.name}")
     except Exception as e:
-        print(f"Erreur : {e}")
+        print(f"ERREUR STYLE : {type(e).__name__} → {e}")
+        import traceback
+        traceback.print_exc()
 
     await bot.process_commands(message)
 
-# ===== Commandes admin =====
+# Commandes admin
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def addtrigger(ctx, *, word: str):
-    """Ajoute un mot déclencheur"""
     word = word.lower().strip()
     if word not in [w.lower() for w in TRIGGER_WORDS]:
         TRIGGER_WORDS.append(word)
@@ -131,7 +136,6 @@ async def addtrigger(ctx, *, word: str):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def removetrigger(ctx, *, word: str):
-    """Supprime un mot déclencheur"""
     word = word.lower().strip()
     for i, w in enumerate(TRIGGER_WORDS):
         if w.lower() == word:
@@ -143,10 +147,6 @@ async def removetrigger(ctx, *, word: str):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def triggers(ctx):
-    """Affiche la liste des mots déclencheurs"""
-    if not TRIGGER_WORDS:
-        await ctx.send("Aucun mot déclencheur.")
-        return
-    await ctx.send("**Mots déclencheurs actuels :**\n" + "\n".join(f"• `{w}`" for w in TRIGGER_WORDS))
+    await ctx.send("**Mots déclencheurs :**\n" + "\n".join(f"• `{w}`" for w in TRIGGER_WORDS))
 
 bot.run(TOKEN)
