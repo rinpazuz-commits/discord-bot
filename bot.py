@@ -179,7 +179,7 @@ async def on_message(message: discord.Message):
                 )
                 webhook_content = (
                     f"[↪ Message auquel cette réponse répond]({referenced_message_url})"
-                    f"\\n\\n{message.content}"
+                    f"\n\n{message.content}"
                 )
 
         # Send first: if sending fails, the original message remains intact.
