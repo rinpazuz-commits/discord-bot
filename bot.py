@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ================== CONFIG ==================
 TOKEN = os.getenv("TOKEN")
-TRIGGER_FILE = Path(__file__).with_name("trigger.json")
+TRIGGER_FILE = Path(__file__).with_name("triggers.json")
 DEFAULT_TRIGGER_WORDS = ["app", "style", "boom"]
 WHOLE_WORD_ONLY = True
 
@@ -28,7 +28,7 @@ EIGHTBALL_RESPONSES = [
 
 
 def load_trigger_words():
-    """Load trigger words from trigger.json; use defaults if the file is missing/invalid."""
+    """Load trigger words from triggers.json; use defaults if the file is missing/invalid."""
     try:
         with TRIGGER_FILE.open("r", encoding="utf-8") as file:
             data = json.load(file)
@@ -38,7 +38,7 @@ def load_trigger_words():
             data = data.get("triggers", data.get("trigger_words", []))
 
         if not isinstance(data, list):
-            raise ValueError("trigger.json must contain a JSON list of words")
+            raise ValueError("triggers.json must contain a JSON list of words")
 
         words = [
             str(word).strip().lower()
@@ -46,14 +46,14 @@ def load_trigger_words():
             if isinstance(word, (str, int, float)) and str(word).strip()
         ]
         if not words:
-            raise ValueError("trigger.json contains no trigger words")
+            raise ValueError("triggers.json contains no trigger words")
 
-        print(f"{len(words)} mot(s) déclencheur(s) chargé(s) depuis trigger.json")
+        print(f"{len(words)} mot(s) déclencheur(s) chargé(s) depuis triggers.json")
         return list(dict.fromkeys(words))
     except FileNotFoundError:
-        print("trigger.json introuvable : utilisation des mots par défaut.")
+        print("triggers.json introuvable : utilisation des mots par défaut.")
     except (json.JSONDecodeError, OSError, ValueError) as error:
-        print(f"Erreur lecture trigger.json : {error}. Utilisation des mots par défaut.")
+        print(f"Erreur lecture triggers.json : {error}. Utilisation des mots par défaut.")
 
     return DEFAULT_TRIGGER_WORDS.copy()
 
@@ -121,7 +121,7 @@ def contains_trigger(content: str) -> bool:
             continue
         if WHOLE_WORD_ONLY:
             # Recognizes punctuation around a word and supports multi-word triggers.
-            pattern = rf"(?<!\\w){re.escape(trigger)}(?!\\w)"
+            pattern = rf"(?<!\w){re.escape(trigger)}(?!\w)"
             if re.search(pattern, content_lower):
                 return True
         elif trigger in content_lower:
@@ -204,7 +204,7 @@ async def addtrigger(ctx, *, word: str):
             await ctx.send(f"✅ Mot ajouté et sauvegardé : `{word}`")
         except OSError as error:
             TRIGGER_WORDS.remove(word)
-            await ctx.send(f"❌ Impossible de sauvegarder trigger.json : {error}")
+            await ctx.send(f"❌ Impossible de sauvegarder triggers.json : {error}")
     else:
         await ctx.send("Ce mot est déjà dans la liste.")
 
@@ -220,7 +220,7 @@ async def removetrigger(ctx, *, word: str):
             await ctx.send(f"✅ Mot supprimé et sauvegardé : `{word}`")
         except OSError as error:
             TRIGGER_WORDS.append(word)
-            await ctx.send(f"❌ Impossible de sauvegarder trigger.json : {error}")
+            await ctx.send(f"❌ Impossible de sauvegarder triggers.json : {error}")
     else:
         await ctx.send("Ce mot n'était pas dans la liste.")
 
