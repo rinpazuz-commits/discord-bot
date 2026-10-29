@@ -2,10 +2,9 @@
 import discord
 from discord.ext import commands
 import random
-
+import os
 # ================== CONFIG ==================
-TOKEN = "MTU0ODY4MjI3MTMwODEyODM2OQ.GsAzMX.MUzYJR6myR1Ff4o-Z3CziGz0HCv7E9E0Jyz8nE"
-
+TOKEN = os.getenv("TOKEN")
 TRIGGER_WORDS = [
     "app",
     "style",
