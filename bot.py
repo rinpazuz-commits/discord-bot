@@ -2,6 +2,7 @@
 import discord
 from discord.ext import commands
 import random
+import json
 import os
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
