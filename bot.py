@@ -165,9 +165,26 @@ async def on_message(message: discord.Message):
 
     try:
         webhook = await get_webhook(message.channel)
+        # If this message is a reply, add a clickable link to the message it replies to.
+        # Webhooks cannot create a native Discord reply reference, but this link
+        # takes people directly to the original message.
+        webhook_content = message.content
+        if message.reference and message.reference.message_id:
+            referenced_channel_id = message.reference.channel_id or message.channel.id
+            referenced_message_id = message.reference.message_id
+            if message.guild:
+                referenced_message_url = (
+                    f"https://discord.com/channels/{message.guild.id}/"
+                    f"{referenced_channel_id}/{referenced_message_id}"
+                )
+                webhook_content = (
+                    f"[↪ Message auquel cette réponse répond]({referenced_message_url})"
+                    f"\\n\\n{message.content}"
+                )
+
         # Send first: if sending fails, the original message remains intact.
         await webhook.send(
-            content=message.content,
+            content=webhook_content,
             username=message.author.display_name,
             avatar_url=message.author.display_avatar.url,
             allowed_mentions=discord.AllowedMentions(
