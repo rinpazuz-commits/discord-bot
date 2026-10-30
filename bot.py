@@ -178,7 +178,7 @@ async def on_message(message: discord.Message):
                     f"{referenced_channel_id}/{referenced_message_id}"
                 )
                 webhook_content = (
-                    f"[↪ Message auquel cette réponse répond]({referenced_message_url})"
+                    f"[↪ you're replying to]({referenced_message_url})"
                     f"\n\n{message.content}"
                 )
 
