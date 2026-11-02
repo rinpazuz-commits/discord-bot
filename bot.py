@@ -45,11 +45,15 @@ def load_trigger_words():
             for word in data
             if isinstance(word, (str, int, float)) and str(word).strip()
         ]
+        # Keep the three emergency triggers active even when triggers.json
+        # is replaced or edited.
+        words.extend(DEFAULT_TRIGGER_WORDS)
+        words = list(dict.fromkeys(words))
         if not words:
             raise ValueError("triggers.json contains no trigger words")
 
-        print(f"{len(words)} mot(s) déclencheur(s) chargé(s) depuis triggers.json")
-        return list(dict.fromkeys(words))
+        print(f"{len(words)} mot(s) déclencheur(s) chargé(s) depuis triggers.json (mots d'urgence inclus)")
+        return words
     except FileNotFoundError:
         print("triggers.json introuvable : utilisation des mots par défaut.")
     except (json.JSONDecodeError, OSError, ValueError) as error:
